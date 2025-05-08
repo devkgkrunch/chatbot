@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+    <title>Dialogflow-like Chatbot</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Assistant</h1>
+            <button id="clear-chat" class="btn-clear">Clear Chat</button>
+        </header>
+        
+        <div class="chat-container">
+            <div id="chat-box" class="chat-box">
+                {% for message in messages %}
+                    <div class="message {{ message.role }}">
+                        <div class="message-header">
+                            <span class="sender">{{ message.role|title }}</span>
+                            <span class="time">{{ loop.index }}</span>
+                        </div>
+                        <div class="message-content">{{ message.content }}</div>
+                        {% if message.role == "assistant" and message.sources %}
+                            <div class="message-sources">
+                                <small>Sources: 
+                                    {% for source in message.sources %}
+                                        {{ source.source }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <div class="input-area">
+                <form id="chat-form">
+                    <input type="text" id="user-input" name="prompt" placeholder="Type your message here..." autocomplete="off" required>
+                    <button type="submit" class="btn-send">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Scroll to bottom of chat
+            function scrollToBottom() {
+                $('#chat-box').scrollTop($('#chat-box')[0].scrollHeight);
+            }
+            
+            // Handle form submission
+            $('#chat-form').on('submit', function(e) {
+                e.preventDefault();
+                const userInput = $('#user-input').val().trim();
+                if (!userInput) return;
+                
+                // Add user message to chat
+                $('#chat-box').append(`
+                    <div class="message user">
+                        <div class="message-header">
+                            <span class="sender">User</span>
+                            <span class="time">Just now</span>
+                        </div>
+                        <div class="message-content">${userInput}</div>
+                    </div>
+                `);
+                
+                // Clear input
+                $('#user-input').val('');
+                scrollToBottom();
+                
+                // Show typing indicator
+                $('#chat-box').append(`
+                    <div class="message assistant typing">
+                        <div class="message-header">
+                            <span class="sender">Assistant</span>
+                        </div>
+                        <div class="message-content">Typing...</div>
+                    </div>
+                `);
+                scrollToBottom();
+                
+                // Send to server
+                $.ajax({
+                    url: '/chat',
+                    method: 'POST',
+                    data: { prompt: userInput },
+                    success: function(response) {
+                        // Remove typing indicator
+                        $('.typing').remove();
+                        
+                        // Add assistant response
+                        $('#chat-box').append(`
+                            <div class="message assistant">
+                                <div class="message-header">
+                                    <span class="sender">Assistant</span>
+                                    <span class="time">Just now</span>
+                                </div>
+                                <div class="message-content">${response.response}</div>
+                                ${response.sources && response.sources.length > 0 ? 
+                                    `<div class="message-sources">
+                                        <small>Sources: ${response.sources.map(s => s.source).join(', ')}</small>
+                                    </div>` : ''}
+                            </div>
+                        `);
+                        scrollToBottom();
+                    },
+                    error: function(xhr) {
+                        $('.typing').remove();
+                        alert('Error: ' + xhr.responseJSON?.error || 'Something went wrong');
+                    }
+                });
+            });
+            
+            // Clear chat
+            $('#clear-chat').on('click', function() {
+                $.ajax({
+                    url: '/clear',
+                    method: 'POST',
+                    success: function() {
+                        $('#chat-box').empty();
+                    }
+                });
+            });
+            
+            // Initial scroll to bottom
+            scrollToBottom();
+        });
+    </script>
+</body>
+</html>

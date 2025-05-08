@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+    <title>Chat with LLM</title>
+    <style>
+        body { font-family: Arial; margin: 2rem; }
+        .chat-box { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; }
+        .user { color: blue; }
+        .assistant { color: green; }
+    </style>
+</head>
+<body>
+    <h1>What can I help with?</h1>
+
+    {% for message in messages %}
+        <div class="chat-box {{ message.role }}">
+            <strong>{{ message.role.title() }}:</strong>
+            <p>{{ message.content }}</p>
+        </div>
+    {% endfor %}
+
+    {% if error %}
+        <div style="color: red;">Error: {{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+        <input type="text" name="prompt" style="width: 60%;" placeholder="Ask your question..." required />
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>
